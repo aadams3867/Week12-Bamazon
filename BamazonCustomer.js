@@ -18,6 +18,9 @@ connection.connect(function(err) {
     storefront();
 });
 
+// Initialize global var
+var maxID = 1;  // There's at least 1 item for sale on Bamazon
+
 // Display all items available for sale
 var storefront = function() {
     console.log("Please browse our current sale items:");
@@ -29,15 +32,17 @@ var storefront = function() {
 	        console.log("MySQL Error", err);
 	      }
 
-	      for (var i=0; i<res.length; i++){
+	      maxID = res.length;
+
+	      for (var i=0; i<maxID; i++){
 	        console.log("Item ID: " + res[i].ItemID + " || " + res[i].ProductName + " || Price: $" + res[i].Price);
 	      }
-	      buySomething();
+	      buySomething(maxID);
 	})
 };
 
 // Shut up and take my money!
-var buySomething = function() {
+var buySomething = function(maxID) {
     inquirer.prompt([{
 	    name: "item",
 	    message: "What is the Item ID of the product you'd like to buy?",
@@ -45,7 +50,13 @@ var buySomething = function() {
 	      if (isNaN(value)) {  // The input is NOT a number
 	        return false;
 	      } else {  // The input IS a number
-	        return true;
+
+	        if (value < 1 || value > maxID) {  // The input number is too small or large
+	        	return false;
+	        } else {  // The input number IS in the range of possibility
+	        	return true;
+	        }
+
 	      }
 	    }
 	}, {
@@ -55,7 +66,13 @@ var buySomething = function() {
 	      if (isNaN(value)) {  // The input is NOT a number
 	        return false;
 	      } else {  // The input IS a number
-	        return true;
+
+	      	if (value < 1) {  // The input number is too small
+	      		return false;
+	      	} else {  // The input number IS in the range of possibility
+	      		return true;
+	      	}
+
 	      }
 	    }
 	}]).then(function(answer) {
@@ -65,7 +82,7 @@ var buySomething = function() {
 		        console.log("MySQL Error", err);
 		    }
 
-		    if (res[0].StockQty > answer.qty) {  // Enough stock to sell
+		    if (res[0].StockQty >= answer.qty) {  // Enough stock to sell
 		        var newQty = (res[0].StockQty - answer.qty)
 		        connection.query("UPDATE products SET ? WHERE ?", [{
 					StockQty: newQty
@@ -79,7 +96,7 @@ var buySomething = function() {
 		    	console.log("Error!  Insufficient quantity!");
 		    	console.log("Bamazon only has " + res[0].StockQty + " unit(s) on hand at this time.");
 		    	console.log("Please try again with a different product or quantity");
-		    	buySomething();
+		    	buySomething(maxID);
 		    }
 		    
 		})
